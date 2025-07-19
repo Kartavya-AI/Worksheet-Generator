@@ -1,0 +1,20 @@
+worksheet_generation_task:
+  description: >
+    Use the Worksheet Generator tool to create a practice worksheet with exactly 10 multiple-choice questions.
+    
+    The worksheet must be generated using these specific parameters:
+    - School Board: {board}
+    - Class: {class_level}
+    - Stream: {stream} (if provided)
+    - Subject: {subject}
+    - Topic/Chapter: {topic}
+    
+    You MUST use the Worksheet Generator tool with these exact parameters to generate the worksheet.
+    Do not create questions manually - always use the provided tool.
+  expected_output: >
+    A complete worksheet containing:
+    1. A clear title with the subject, class, and topic
+    2. Exactly 10 multiple-choice questions with 4 options each (A, B, C, D)
+    3. All questions must be relevant to the specified topic and appropriate for the given class level
+    4. A separate answer key section at the end
+    5. Professional formatting suitable for student use
