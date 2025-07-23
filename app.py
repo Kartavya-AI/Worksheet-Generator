@@ -1,3 +1,8 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+sys.modules["sqlite3.dbapi2"] = sys.modules["pysqlite3.dbapi2"]
+
 import streamlit as st
 import os
 import pandas as pd
@@ -153,85 +158,6 @@ if 'worksheet' in st.session_state and st.session_state.worksheet:
     except Exception as e:
         st.error(f"Error creating PDF: {e}")
         st.info("💡 Tip: If you're getting encoding errors, try simplifying the worksheet content or removing special characters.")
-
-    try:
-        worksheet_lines = st.session_state.worksheet.split('\n')
-        questions = []
-        current_question = ""
-        question_num = 1
-        
-        for line in worksheet_lines:
-            line = line.strip()
-            if not line:
-                continue
-            if (line.startswith(f"{question_num}.") or 
-                line.startswith(f"Q{question_num}") or 
-                line.startswith(f"Question {question_num}") or
-                line.lower().startswith("q") and any(char.isdigit() for char in line[:5])):
-                
-                if current_question:
-                    questions.append({
-                        "Question_Number": question_num - 1,
-                        "Question_Text": current_question.strip(),
-                        "Board": board,
-                        "Class": class_level,
-                        "Stream": stream if stream else "N/A",
-                        "Subject": subject,
-                        "Topic": topic,
-                        "Grade_Level": grade
-                    })
-                
-                current_question = line
-                question_num += 1
-            else:
-                current_question += " " + line
-        
-        if current_question:
-            questions.append({
-                "Question_Number": question_num - 1,
-                "Question_Text": current_question.strip(),
-                "Board": board,
-                "Class": class_level,
-                "Stream": stream if stream else "N/A",
-                "Subject": subject,
-                "Topic": topic,
-                "Grade_Level": grade
-            })
-        
-        if not questions:
-            questions = [{
-                "Question_Number": 1,
-                "Question_Text": st.session_state.worksheet,
-                "Board": board,
-                "Class": class_level,
-                "Stream": stream if stream else "N/A",
-                "Subject": subject,
-                "Topic": topic,
-                "Grade_Level": grade
-            }]
-        
-        df = pd.DataFrame(questions)
-        csv_buffer = io.StringIO()
-        df.to_csv(csv_buffer, index=False, encoding='utf-8')
-        csv_data = csv_buffer.getvalue().encode('utf-8-sig')
-        safe_subject = "".join(c for c in subject if c.isalnum() or c in (' ', '-', '_')).rstrip()
-        safe_topic = "".join(c for c in topic if c.isalnum() or c in (' ', '-', '_')).rstrip()
-        filename = f"{safe_subject.replace(' ','_')}_{safe_topic.replace(' ','_')}_worksheet.csv"
-
-        st.download_button(
-            label="📊 Export as CSV",
-            data=csv_data,
-            file_name=filename,
-            mime="text/csv",
-            use_container_width=True
-        )
-        
-        with st.expander("📋 Preview CSV Structure"):
-            st.dataframe(df.head(), use_container_width=True)
-            
-    except Exception as e:
-        st.error(f"Error creating CSV: {e}")
-        st.info("💡 Tip: The CSV export attempts to parse individual questions. If parsing fails, the entire worksheet will be saved as one entry.")
 
     st.download_button(
         label="📝 Export as Text File",
