@@ -106,7 +106,6 @@ if 'worksheet' in st.session_state and st.session_state.worksheet:
                 self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
             
             def add_worksheet_content(self, subject, topic, class_level, board, stream, worksheet_text):
-                # Title section
                 self.set_font('Arial', 'B', 14)
                 self.cell(0, 10, f"Subject: {subject}", 0, 1, 'L')
                 self.cell(0, 10, f"Topic: {topic}", 0, 1, 'L')
@@ -137,8 +136,6 @@ if 'worksheet' in st.session_state and st.session_state.worksheet:
                 
                 for old, new in replacements.items():
                     text = text.replace(old, new)
-                
-                # Keep only ASCII characters and basic symbols
                 cleaned = ''.join(char if ord(char) < 128 else '?' for char in text)
                 return cleaned
             
@@ -168,7 +165,12 @@ if 'worksheet' in st.session_state and st.session_state.worksheet:
         pdf = WorksheetPDF()
         pdf.add_page()
         pdf.add_worksheet_content(subject, topic, class_level, board, stream, st.session_state.worksheet)
-        pdf_bytes = pdf.output(dest='S').encode('latin1')
+        pdf_output = pdf.output(dest='S')
+        if isinstance(pdf_output, (bytes, bytearray)):
+            pdf_bytes = bytes(pdf_output)
+        else:
+            pdf_bytes = pdf_output.encode('latin1')
+  
         safe_subject = "".join(c for c in subject if c.isalnum() or c in (' ', '-', '_')).rstrip()
         safe_topic = "".join(c for c in topic if c.isalnum() or c in (' ', '-', '_')).rstrip()
         filename = f"{safe_subject.replace(' ','_')}_{safe_topic.replace(' ','_')}_worksheet.pdf"
