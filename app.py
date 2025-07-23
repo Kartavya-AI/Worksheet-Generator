@@ -90,59 +90,84 @@ if 'worksheet' in st.session_state and st.session_state.worksheet:
     st.header("Export Options")
     try:
         from fpdf import FPDF
-        class UTF8FPDF(FPDF):
+        class WorksheetPDF(FPDF):
             def __init__(self):
                 super().__init__()
-                self.add_font('DejaVu', '', 'DejaVuSansCondensed.ttf', uni=True)
-        
-            def write_utf8_text(self, text):
-                lines = text.split('\n')
+                self.set_auto_page_break(auto=True, margin=15)
+            
+            def header(self):
+                self.set_font('Arial', 'B', 16)
+                self.cell(0, 10, 'Practice Worksheet', 0, 1, 'C')
+                self.ln(5)
+            
+            def footer(self):
+                self.set_y(-15)
+                self.set_font('Arial', 'I', 8)
+                self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+            
+            def add_worksheet_content(self, subject, topic, class_level, board, stream, worksheet_text):
+                # Title section
+                self.set_font('Arial', 'B', 14)
+                self.cell(0, 10, f"Subject: {subject}", 0, 1, 'L')
+                self.cell(0, 10, f"Topic: {topic}", 0, 1, 'L')
+                self.cell(0, 10, f"Class: {class_level} ({board})", 0, 1, 'L')
+                if stream and stream != "Not specified":
+                    self.cell(0, 10, f"Stream: {stream}", 0, 1, 'L')
+                self.ln(10)
+                self.set_font('Arial', '', 10)
+                lines = worksheet_text.replace('\r\n', '\n').split('\n')
+                
                 for line in lines:
-                    if len(line) > 80:
-                        words = line.split(' ')
-                        current_line = ''
-                        for word in words:
-                            if len(current_line + word) < 80:
-                                current_line += word + ' '
-                            else:
-                                if current_line:
-                                    self.cell(0, 10, current_line.strip(), ln=True)
-                                current_line = word + ' '
-                        if current_line:
-                            self.cell(0, 10, current_line.strip(), ln=True)
-                    else:
-                        self.cell(0, 10, line, ln=True)
-        
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=10)
-        pdf.set_font("Arial", 'B', 14)
-        pdf.cell(0, 10, f"{subject} - {topic}", ln=True, align='C')
-        pdf.cell(0, 10, f"Class {class_level} ({board})", ln=True, align='C')
-        if stream:
-            pdf.cell(0, 10, f"Stream: {stream}", ln=True, align='C')
-        pdf.ln(5)
-        pdf.set_font("Arial", size=10)
-        
-        worksheet_lines = st.session_state.worksheet.replace('\r\n', '\n').split('\n')
-        
-        for line in worksheet_lines:
-            clean_line = line.encode('ascii', 'replace').decode('ascii')
-            if len(clean_line) > 90:
-                words = clean_line.split(' ')
+                    clean_line = self.clean_text(line)
+                    
+                    if not clean_line.strip():
+                        self.ln(3)
+                        continue
+                    self.add_wrapped_text(clean_line)
+            
+            def clean_text(self, text):
+                replacements = {
+                    '"': '"', '"': '"', ''': "'", ''': "'",
+                    '–': '-', '—': '-', '…': '...',
+                    '°': ' degrees', '×': 'x', '÷': '/',
+                    '≤': '<=', '≥': '>=', '≠': '!=',
+                    'α': 'alpha', 'β': 'beta', 'γ': 'gamma',
+                    'δ': 'delta', 'π': 'pi', 'θ': 'theta'
+                }
+                
+                for old, new in replacements.items():
+                    text = text.replace(old, new)
+                
+                # Keep only ASCII characters and basic symbols
+                cleaned = ''.join(char if ord(char) < 128 else '?' for char in text)
+                return cleaned
+            
+            def add_wrapped_text(self, text, max_width=180):
+                if not text.strip():
+                    return
+                
+                self.set_font('Arial', '', 10)
+                if self.get_string_width(text) <= max_width:
+                    self.cell(0, 6, text, 0, 1, 'L')
+                    return
+                
+                words = text.split(' ')
                 current_line = ''
+                
                 for word in words:
-                    if len(current_line + word) < 85:
-                        current_line += word + ' '
+                    test_line = current_line + (' ' if current_line else '') + word
+                    if self.get_string_width(test_line) <= max_width:
+                        current_line = test_line
                     else:
-                        if current_line.strip():
-                            pdf.multi_cell(0, 5, current_line.strip())
-                        current_line = word + ' '
-                if current_line.strip():
-                    pdf.multi_cell(0, 5, current_line.strip())
-            else:
-                pdf.multi_cell(0, 5, clean_line)
+                        if current_line:
+                            self.cell(0, 6, current_line, 0, 1, 'L')
+                        current_line = word
+                if current_line:
+                    self.cell(0, 6, current_line, 0, 1, 'L')
         
+        pdf = WorksheetPDF()
+        pdf.add_page()
+        pdf.add_worksheet_content(subject, topic, class_level, board, stream, st.session_state.worksheet)
         pdf_bytes = pdf.output(dest='S').encode('latin1')
         safe_subject = "".join(c for c in subject if c.isalnum() or c in (' ', '-', '_')).rstrip()
         safe_topic = "".join(c for c in topic if c.isalnum() or c in (' ', '-', '_')).rstrip()
@@ -155,9 +180,10 @@ if 'worksheet' in st.session_state and st.session_state.worksheet:
             mime="application/pdf",
             use_container_width=True
         )
+        
     except Exception as e:
         st.error(f"Error creating PDF: {e}")
-        st.info("💡 Tip: If you're getting encoding errors, try simplifying the worksheet content or removing special characters.")
+        st.info("💡 Tip: If you continue to have issues, try using the Text export option instead.")
 
     st.download_button(
         label="📝 Export as Text File",
