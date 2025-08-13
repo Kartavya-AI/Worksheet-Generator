@@ -1,6 +1,14 @@
+fastapi
+uvicorn[standard]
+gunicorn
 crewai
 crewai[tools]
+google-generativeai
+pydantic
 python-dotenv
-fastapi
-uvicorn
-gunicorn
+pydantic-settings
+tenacity
+PyYAML
+httpx
+structlog
+python-multipart
